@@ -203,7 +203,7 @@ def optimizeMaster():
 	for sc in omega)
 
 	objFuncMaster = LinExpr()
-	# # #12. The expected profit of retailer which is equal to the expected revenue obtained from selling electricity to the end-users and to the pool minus the expected cost of purchasing electricity from the pool and through forward contracts as follows:
+	# # #12. The expected profit of retailer which is equal to the expected revenue obtained from selling inputs to the end-users and to the pool minus the expected cost of purchasing inputs from the pool and through forward contracts as follows:
 	objFuncMaster += quicksum(scenarioProb[sc] * foMaster[sc]  for sc in omega)
 	constraint9()
 	constraint14a()
@@ -262,7 +262,7 @@ def solveAuxiliar():
 	auxiliar.update()
 	#auxiliar Objective function 
 	objFuncAux = LinExpr()
-	#12. The expected profit of retailer which is equal to the expected revenue obtained from selling electricity to the end-users and to the pool minus the expected cost of purchasing electricity from the pool and through forward contracts as follows:
+	#12. The expected profit of retailer which is equal to the expected revenue obtained from selling inputs to the end-users and to the pool minus the expected cost of purchasing inputs from the pool and through forward contracts as follows:
 	objFuncAux += quicksum(
 				scenarioProb[sc] * 
 				foAux[scenario]  for scenario in omega for sc in omega)
