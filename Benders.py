@@ -15,7 +15,7 @@ omega, sc = multidict({'1': [1],'2': [1],'3': [1],'4': [1],'5': [1],'6': [1],'7'
 i, bl1 = multidict({1: [1], 2: [1],3: [1]})
 #Forwards
 f, fr = multidict({"Forward 1": [1],	"Forward 2": [1]})
-#Power blocks in forward contracts
+#input blocks in forward contracts
 j, pb = multidict({"Bajo": [1],"Moderado": [1],"Alto": [1]})
 #Clients
 l, client = multidict({"Pequeno": [1],"Mediano": [1]})
@@ -36,9 +36,9 @@ costF = auxiliar.addVars(t, name ="cost forward", vtype= GRB.CONTINUOUS)
 #net cost of trading in the pool in period t and scenario omega
 costP = auxiliar.addVars(t, omega, name = "cost pool", vtype= GRB.CONTINUOUS)
 #input purchased from contract f
-powerTotalF =  auxiliar.addVars(f, name="input from forward contract", vtype= GRB.CONTINUOUS)
+inputTotalF =  auxiliar.addVars(f, name="input from forward contract", vtype= GRB.CONTINUOUS)
 #input purchased from the jth block of the forward contracting curve belonging to contract f
-powerBlockF = auxiliar.addVars(f, j, obj = 1, name="input from block from forward contract", vtype= GRB.CONTINUOUS)
+inputBlockF = auxiliar.addVars(f, j, obj = 1, name="input from block from forward contract", vtype= GRB.CONTINUOUS)
 #input supplied by the retailer to farmer group l in the period t and scenario omega
 inputR = auxiliar.addVars(l, t, omega, name="input supplied by the retailer", vtype= GRB.CONTINUOUS)
 #input traded in the pool in the period t and scenario omega
@@ -79,27 +79,27 @@ it = 1
 def constraint2(priceBlock):
 	ctr2 = {}
 	for hour in t:
-		ctr2[hour] = auxiliar.addConstr(costF[hour] == (quicksum(powerBlockF[frw,pwb] * priceBlock[frw,pwb] for frw in f for pwb in j)))	#need to changue the sumatory for pwb in j to for pwb in Nj
+		ctr2[hour] = auxiliar.addConstr(costF[hour] == (quicksum(inputBlockF[frw,pwb] * priceBlock[frw,pwb] for frw in f for pwb in j)))	#need to changue the sumatory for pwb in j to for pwb in Nj
 	auxiliar.update()
 
-#3. The power purchased in each block is non-negative and bounded by an upper limit.
+#3. The input purchased in each block is non-negative and bounded by an upper limit.
 def constraint3(upperPriceForward):
 	ctr3a = {}
 	for pwb in j: 
 		for frw in f:
-			ctr3a[pwb,frw] = auxiliar.addConstr(powerBlockF[frw,pwb] >= 0)		
+			ctr3a[pwb,frw] = auxiliar.addConstr(inputBlockF[frw,pwb] >= 0)		
 	auxiliar.update()
 	ctr3b = {}
 	for pwb in j:
 		for frw in f:
-			ctr3a[pwb,frw] = auxiliar.addConstr(powerBlockF[frw,pwb] <= upperPriceForward[frw,pwb])
+			ctr3a[pwb,frw] = auxiliar.addConstr(inputBlockF[frw,pwb] <= upperPriceForward[frw,pwb])
 	auxiliar.update()
 
-#4. The power purchased for each contract is the sum of the power purchased in each block
+#4. The input purchased for each contract is the sum of the input purchased in each block
 def constraint4():
 	ctr4 = {}
 	for frw in f: 
-		ctr4[frw] = auxiliar.addConstr(powerTotalF[frw] == quicksum(powerBlockF[frw,pwb] for pwb in j)) 
+		ctr4[frw] = auxiliar.addConstr(inputTotalF[frw] == quicksum(inputBlockF[frw,pwb] for pwb in j)) 
 	auxiliar.update()
 
 #The price-quota curve for each farmer group in each period and scenario can be formulated as follows:
@@ -146,17 +146,17 @@ def solutionAuxiliar():
         print('Esto se obtiene por escenario definido')
         for sc in omega:
 			print "Escenario "+ str(sc) + str( quicksum(INRX[client,hour,sc] for client in l for hour in t))
-		#power purchased from the contract
-    	powerTotalFx = auxiliar.getAttr('x', powerTotalF)
+		#input purchased from the contract
+    	inputTotalFx = auxiliar.getAttr('x', inputTotalF)
     	print('\nCantidad de pesticidas (ton) comprados al mayorista')
     	print('Esto se obtiene por contrato')
     	for frw in f:
-    		print "Contrato " + str(frw) + "--> " + str(powerTotalFx[frw]) #IMPORTANT OUTPUT
-    	powerBlockFx = auxiliar.getAttr('x',powerBlockF)
+    		print "Contrato " + str(frw) + "--> " + str(inputTotalFx[frw]) #IMPORTANT OUTPUT
+    	inputBlockFx = auxiliar.getAttr('x',inputBlockF)
     	print('\nPrecio al que compra el intermediador por bloque')
     	print('Se obtiene por contrato')
     	for frw in f:
-    		print 'Contrato ' + str(frw) + '-->' + str( quicksum(powerBlockFx[frw,pb] for pb in j) )
+    		print 'Contrato ' + str(frw) + '-->' + str( quicksum(inputBlockFx[frw,pb] for pb in j) )
     	print('\nPrecio al que vende el intermediador por tipo de cliente')
     	print('Se obtiene por tipo de cliente (creo)')
     	inputPFx = auxiliar.getAttr('x',inputP)
@@ -192,13 +192,13 @@ def optimizeMaster():
 
 	for scenario in omega:			
 	  	foMaster[scenario] = quicksum(inputBlock[client,bg,hour,sc]*A[client,bg] for client in l for bg in i for hour in t for sc in omega)
-	  		# - powerBlockF[frw,pwb]*priceBlock[frw,pwb]  
+	  		# - inputBlockF[frw,pwb]*priceBlock[frw,pwb]  
 	  		# - inputP[hour,sc]*PricePool[hour,sc] for frw in f for pwb in j for hour in t for hour in t for client in l for bg in i for sc in omega)
 
 	quicksum(scenarioProb[sc] * quicksum(
 	(quicksum(inputBlock[client,bg,hour,sc]*gammaPriceR[client,bg] for client in l for bg in i)
 	- quicksum(inputP[hour,sc]*PricePool[hour,sc] for hour in t for sc in omega)
-	- quicksum(powerBlockF[frw,pwb]*priceBlock[frw,pwb] for frw in f for pwb in j))
+	- quicksum(inputBlockF[frw,pwb]*priceBlock[frw,pwb] for frw in f for pwb in j))
 	for hour in t)
 	for sc in omega)
 
@@ -255,7 +255,7 @@ def solveAuxiliar():
 	quicksum(scenarioProb[sc] * quicksum(
 	(quicksum(inputBlock[client,bg,hour,sc]*gammaPriceR[client,bg] for client in l for bg in i)
 	- quicksum(inputP[hour,sc]*PricePool[hour,sc] for hour in t for sc in omega)
-	- quicksum(powerBlockF[frw,pwb]*priceBlock[frw,pwb] for frw in f for pwb in j))
+	- quicksum(inputBlockF[frw,pwb]*priceBlock[frw,pwb] for frw in f for pwb in j))
 	for hour in t)
 	for sc in omega)
 
@@ -312,7 +312,7 @@ def addCuts(inputBlock,upperPriceBlock):
 		for sc in omega:
 			ctr10[hour,sc] = auxiliar.addConstr(
 				quicksum(inputBlock[client,bg,hour,sc] for client in l for bg in i)*Aconstant[client,bg]
-				>= (quicksum(inputP[hour,sc]+powerBlockF[frw,pwb] for frw in f for pwb in j)))
+				>= (quicksum(inputP[hour,sc]+inputBlockF[frw,pwb] for frw in f for pwb in j)))
 	auxiliar.update()
 
 print("PRIMERO HPTAAAAAAAAAAAAA")
